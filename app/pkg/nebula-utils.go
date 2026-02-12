@@ -23,7 +23,6 @@ type EnrolmentPayload struct {
 
 //this only supports linux for now, for v 2.0.0 we
 //would probably need to look at how fyne would work with cross-comp and save os-level operations
-
 func InstallNebula() error {
 	cmd := exec.Command(
 		"sudo", "pacman", "install", "nebula",
@@ -166,4 +165,13 @@ func Unzip(src string, dest string) error {
     }
 
     return nil
+}
+
+func GetHomePath() string {
+	dir, err := os.UserHomeDir()
+	if err != nil {
+		log.Printf("error when fetching home path: %s", err)
+		return ""
+	}
+	return dir
 }
