@@ -1,14 +1,15 @@
 package pkg
 
 import (
-	"fmt"
-	"os/exec"
-	"bytes"
-	"log"
 	"archive/zip"
-	"os"
+	"bytes"
+	"fmt"
 	"io"
+	"log"
+	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -19,6 +20,12 @@ type EnrolmentPayload struct {
 	CertificateAuthority string
 	ServerCert string
 	ServerKey string
+}
+
+func (*EnrolmentPayload) New() *EnrolmentPayload {
+	return &EnrolmentPayload{
+		Config : DESTINATION_CERT_PATH + HOST_NAME,
+	}
 }
 
 //this only supports linux for now, for v 2.0.0 we
@@ -44,8 +51,6 @@ func InstallNebula() error {
 	}
 	
 	log.Printf("Nebula successfully installed: %s", stdoutBuff.String())
-	
-	fmt.Printf("Nebula successfully installed: %s", stdoutBuff.String())
 	return nil
 }
 
@@ -105,7 +110,8 @@ func NebulaStart(ep EnrolmentPayload) error {
 func Unzip(src string, dest string) error {
 
     r, err := zip.OpenReader(src)
-    if err != nil {
+    runtime.Breakpoint()
+		if err != nil {
         return err
     }
     defer func() {
@@ -113,8 +119,9 @@ func Unzip(src string, dest string) error {
             panic(err)
         }
     }()
-
-    os.MkdirAll(dest, 0755)
+		
+		runtime.Breakpoint()
+    os.MkdirAll(dest, DEFAULT_PERMISSIONS)
 
     // Closure to address file descriptors issue with all the deferred .Close() methods
     extractAndWriteFile := func(f *zip.File) error {
@@ -129,7 +136,6 @@ func Unzip(src string, dest string) error {
         }()
 
         path := filepath.Join(dest, f.Name)
-
         // Check for ZipSlip (Directory traversal)
         if !strings.HasPrefix(path, filepath.Clean(dest) + string(os.PathSeparator)) {
             return fmt.Errorf("illegal file path: %s", path)
@@ -154,17 +160,29 @@ func Unzip(src string, dest string) error {
                 return err
             }
         }
+				// add to payload obj here
+				
         return nil
     }
-
     for _, f := range r.File {
         err := extractAndWriteFile(f)
-        if err != nil {
+				if err != nil {
             return err
         }
     }
 
     return nil
+}
+
+func ValidateDir(dirs []string) error {
+	for _, dir := range dirs {
+		err := os.Mkdir(dir, DEFAULT_PERMISSIONS)
+		if err != nil && !os.IsExist(err) {
+			log.Printf("error when trying to make %s directory: %w", dir, err.Error())
+			return err
+		}
+	}
+	return nil
 }
 
 func GetHomePath() string {
