@@ -4,7 +4,6 @@ import (
 	"hypha/app/pkg"
 	"log"
 	"os"
-	"runtime"
 	// "runtime"
 )
 
@@ -23,11 +22,23 @@ func Enrol() {
 			os.Exit(1)
 		}
 
-		pkg.Unzip(pkg.HOST_NAME,pkg.DESTINATION_CERT_PATH)
-		runtime.Breakpoint()	
-	
+		err = pkg.Unzip(pkg.HOST_PATH,pkg.DESTINATION_FOLDER)
+		
+		if err != nil {
+			log.Fatal("Failed to unzip: %w", err)
+			os.Exit(1)
+		}
+
+		payload, err := pkg.ParseCertFolder(pkg.DESTINATION_FOLDER)	
+			
+		log.Printf("Payload parsed: %s", payload)
+		
+		pkg.NebulaStart()
+		return 
 	}
+
 	mok := pkg.InstallNebula()	
+	
 	if mok != nil{
 		// runtime.Breakpoint()
 	}

@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 )
 
@@ -18,15 +17,10 @@ import (
 type EnrolmentPayload struct {
 	Config string
 	CertificateAuthority string
-	ServerCert string
-	ServerKey string
+	HostCert string
+	HostKey string
 }
 
-func (*EnrolmentPayload) New() *EnrolmentPayload {
-	return &EnrolmentPayload{
-		Config : DESTINATION_CERT_PATH + HOST_NAME,
-	}
-}
 
 //this only supports linux for now, for v 2.0.0 we
 //would probably need to look at how fyne would work with cross-comp and save os-level operations
@@ -77,32 +71,99 @@ func IfNebulaExists() bool {
 	return true
 }
 
-func NebulaStart(ep EnrolmentPayload) error {
-	cmd := exec.Command(
-		"mv", "", "install", "nebula",
-		)
-	
-	//buffers for debugging
-	var stdoutBuff bytes.Buffer
-	var stderrBuff bytes.Buffer
+func NebulaStart() error {
 
-	cmd.Stdout = &stdoutBuff
-	cmd.Stderr = &stderrBuff
+	cmd := exec.Command(
+	 NEBULA_PATH, "-config", filepath.Join(DESTINATION_FOLDER, "config.yaml"),
+	)
 	
-	err := cmd.Run()
+	stderrPipe, err := cmd.StderrPipe()
 
 	if err != nil {
-		stderrString := stderrBuff.String()
-		log.Printf("error encountered when installing nebula: %s", stderrString)
-		return fmt.Errorf("error encountered when installing nebula: %s ", stderrString)
+		return fmt.Errorf("failed to get stderr pipe: %w", err)
 	}
 	
-	log.Printf("Nebula successfully installed: %s", stdoutBuff.String())
+	stdoutPipe, err := cmd.StdoutPipe()
 	
-	fmt.Printf("Nebula successfully installed: %s", stdoutBuff.String())
+	if err != nil {
+		return fmt.Errorf("failed to get stdout pipe: %w", err)
+	}
+	
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start nebula: %w", err)
+	}
+	
+	go func() {
+		stderrData, _ := io.Copy(os.Stderr, stderrPipe)
+		if stderrData > 0 {
+			log.Printf("nebula stderr: %s", stderrData)
+		}
+	}()
+	
+	go func() {
+		stdoutData, _ := io.Copy(os.Stdout, stdoutPipe)
+		if stdoutData > 0 {
+			log.Printf("nebula stdout: %s", stdoutData)
+		}
+	}()
+	
+	if err := cmd.Wait(); err != nil {
+		return fmt.Errorf("nebula exited with error: %w", err)
+	}
+
 	return nil
 }
 
+
+//NOTE: will probably not be used
+func ParseCertFolder(dirPath string) (*EnrolmentPayload, error) {
+	payload := &EnrolmentPayload{}
+	entries, err := os.ReadDir(dirPath)
+	log.Print("enrieles:, dirs", dirPath, entries)	
+	if err != nil {
+		return nil, fmt.Errorf("failed to read directory: %w", err)
+	}
+	
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		
+		name := entry.Name()
+		
+		switch {
+		
+		case name == "ca.crt":
+			data, err := os.ReadFile(filepath.Join(dirPath, name))
+			if err != nil {
+				return nil, fmt.Errorf("failed to read ca.crt: %w", err)
+			}
+			payload.CertificateAuthority = string(data)
+		
+		case strings.HasSuffix(name, ".key"):
+			data, err := os.ReadFile(filepath.Join(dirPath, name))
+			if err != nil {
+				return nil, fmt.Errorf("failed to read %s: %w", name, err)
+			}
+			payload.HostKey = string(data)
+		
+		case strings.HasSuffix(name, ".crt") && name != "ca.crt":
+			data, err := os.ReadFile(filepath.Join(dirPath, name))
+			if err != nil {
+				return nil, fmt.Errorf("failed to read %s: %w", name, err)
+			}
+			payload.HostCert = string(data)
+		
+		case name == "config.yaml":
+			data, err := os.ReadFile(filepath.Join(dirPath, name))
+			if err != nil {
+				return nil, fmt.Errorf("failed to read config.yaml: %w", err)
+			}
+			payload.Config = string(data)
+		}
+	}
+	return payload, nil
+}
 
 //Copy pasted
 //TODO: dump contents of each unzipped file into path obj
@@ -110,7 +171,6 @@ func NebulaStart(ep EnrolmentPayload) error {
 func Unzip(src string, dest string) error {
 
     r, err := zip.OpenReader(src)
-    runtime.Breakpoint()
 		if err != nil {
         return err
     }
@@ -120,7 +180,6 @@ func Unzip(src string, dest string) error {
         }
     }()
 		
-		runtime.Breakpoint()
     os.MkdirAll(dest, DEFAULT_PERMISSIONS)
 
     // Closure to address file descriptors issue with all the deferred .Close() methods
@@ -176,7 +235,7 @@ func Unzip(src string, dest string) error {
 
 func ValidateDir(dirs []string) error {
 	for _, dir := range dirs {
-		err := os.Mkdir(dir, DEFAULT_PERMISSIONS)
+		err := os.MkdirAll(dir, DEFAULT_PERMISSIONS)
 		if err != nil && !os.IsExist(err) {
 			log.Printf("error when trying to make %s directory: %w", dir, err.Error())
 			return err
