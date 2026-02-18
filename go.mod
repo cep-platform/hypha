@@ -1,4 +1,4 @@
-module cep-cli/m
+module hypha
 
 go 1.25.5
 
