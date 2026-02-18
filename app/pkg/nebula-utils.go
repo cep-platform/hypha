@@ -13,12 +13,14 @@ import (
 	"strings"
 )
 
-type EnrolmentPayload struct {
-	Config               string
-	CertificateAuthority string
-	HostCert             string
-	HostKey              string
-}
+//TODO:Some things:
+//	- the use of loos funcs + constants will get confusing but ok for now:
+//	    - wrap below in receiver funcs
+//	    - tidy the constants
+//	- better error handling for when exec commands fail
+//  - zip filepath needs to be given by user and validated 
+//  - we probably don't want all of this to be in pkg but service specific backend, this will be refactored after DNS is up
+//  - The UI is a mess but its fine for now as we don't have requirements yet
 
 // this only supports linux for now, for v 2.0.0 we
 // would probably need to look at how fyne would work with cross-comp and save os-level operations
@@ -190,7 +192,6 @@ func GetHomeDir() string {
 			return usr.HomeDir
 		}
 	}
-	// Not running with sudo, use current user
 	usr, err := user.Current()
 	if err != nil {
 		panic(err)

@@ -5,9 +5,10 @@ import (
 	"io"
 	"log"
 	"os"
-	// "runtime"
 )
 
+//NOTE: This is mainly used for development currently
+//Main entry point will be via cmd/widget
 func Enrol() io.ReadCloser {
 	
 	nebulaExists := pkg.IfNebulaExists()

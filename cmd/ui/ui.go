@@ -19,17 +19,14 @@ func main() {
 	w := a.NewWindow("Hypha🍄")
 	w.Resize(fyne.NewSize(1920, 1080))
 
-	// Header
 	title := widget.NewLabelWithStyle("Hypha 0.1",
 		fyne.TextAlignCenter,
 		fyne.TextStyle{Bold: true})
 
-	// Status indicator
 	statusLabel := widget.NewLabelWithStyle("● Ready",
 		fyne.TextAlignLeading,
 		fyne.TextStyle{})
 
-	// Log output as a Label (can be updated even though it looks read-only)
 	logText := ""
 	logLabel := widget.NewLabel("")
 	logLabel.Wrapping = fyne.TextWrapWord
@@ -37,14 +34,13 @@ func main() {
 	logScroll := container.NewScroll(logLabel)
 	logScroll.SetMinSize(fyne.NewSize(760, 400))
 
-	// Helper to append to log - now updates label
 	appendLog := func(text string) {
 		logText += text + "\n"
 		logLabel.SetText(logText)
 		logScroll.ScrollToBottom()
 	}
 
-	// Buttons
+
 	unzipBtn := widget.NewButtonWithIcon("Unzip Certificates",
 		theme.FolderOpenIcon(), func() {
 			statusLabel.SetText("● Unzipping...")
@@ -62,6 +58,7 @@ func main() {
 			appendLog("✓ Certificates extracted successfully")
 		})
 
+	//TODO: block starting nebula before unzipping
 	startBtn := widget.NewButtonWithIcon("Start Nebula",
 		theme.MediaPlayIcon(), func() {
 			statusLabel.SetText("● Starting Nebula...")
@@ -79,10 +76,8 @@ func main() {
 			appendLog("✓ Nebula started successfully")
 			appendLog("--- Nebula Output ---")
 
-			// Create channel for lines
 			linesChan := make(chan string, 100)
 
-			// Read from pipe using raw bytes
 			go func() {
 				defer close(linesChan)
 				buf := make([]byte, 1024)
