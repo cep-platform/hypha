@@ -2,46 +2,48 @@ package main
 
 import (
 	"hypha/app/pkg"
+	"io"
 	"log"
 	"os"
 	// "runtime"
 )
 
-func Enrol() {
+func Enrol() io.ReadCloser {
 	
 	nebulaExists := pkg.IfNebulaExists()
 	
-	if nebulaExists{
-		//TODO: get enrolment payload from unzipped contents
-		// pkg.NebulaStart()
+	if !nebulaExists{
 		
-		err := pkg.ValidateDir(pkg.DIRS)
-		
+		err := pkg.InstallNebula()
+
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("Failed to install Nebula")
 			os.Exit(1)
 		}
+	 }
 
-		err = pkg.Unzip(pkg.HOST_PATH,pkg.DESTINATION_FOLDER)
+	err := pkg.ValidateDir(pkg.DIRS)
 		
-		if err != nil {
-			log.Fatal("Failed to unzip: %w", err)
-			os.Exit(1)
-		}
-
-		payload, err := pkg.ParseCertFolder(pkg.DESTINATION_FOLDER)	
-			
-		log.Printf("Payload parsed: %s", payload)
-		
-		pkg.NebulaStart()
-		return 
+	if err != nil {
+		log.Fatal(err)
+		os.Exit(1)
 	}
 
-	mok := pkg.InstallNebula()	
+	err = pkg.Unzip(pkg.HOST_PATH,pkg.DESTINATION_FOLDER)
+		
+	if err != nil {
+		log.Fatal("Failed to unzip: %w", err)
+		os.Exit(1)
+	}
 	
-	if mok != nil{
-		// runtime.Breakpoint()
+	 pipe, err := pkg.NebulaStart(pkg.NEBULA_PATH, pkg.DESTINATION_CERTS)
+	
+	if err != nil {
+		log.Fatal("Failed to start Nebula: %w", err)
+		os.Exit(1) 
 	}
+	
+	return pipe
 }
 
 func main() {
