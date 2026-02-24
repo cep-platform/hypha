@@ -31,6 +31,16 @@ go run app/internal/enrolment/enrol.go
 ```
 
 
+## DNS (WIP)
+
+Cross platform DNS service, for now only works and tested on Linux. While some vibe-coded DNS resolvers were created already, I sure as hell don't trust them.
+The UI is not integrated yet so for now you can only run in dev mode until we get the platform-specific builds done, here is how you can do it:
+
+```
+go run cmd/dns/dns-mapper.go
+```
+That's about it for now!
+
 ## Goal for V1.0.0:
 
 - LAN-based retrieval of cep-standardized config (4 conf files)
