@@ -39,7 +39,9 @@ The UI is not integrated yet so for now you can only run in dev mode until we ge
 ```
 go run cmd/dns/dns-mapper.go
 ```
-That's about it for now!
+
+The above queries resolvectl and returns your Global DNS, That's about it for now!
+This is supposed to be cross platform and will be after some testing and integration with the UI
 
 ## Goal for V1.0.0:
 
