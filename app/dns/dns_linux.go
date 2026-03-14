@@ -38,3 +38,7 @@ func GetGlobalDNS() ([]string, error) {
 		return append(dnsArrTemp, ip), nil
 }
 
+func SetGlobalDNS([]string) error {
+	return nil
+}
+

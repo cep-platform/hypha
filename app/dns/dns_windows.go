@@ -26,3 +26,7 @@ func GetGlobalDNS() ([]string, error) {
     })
     return servers, nil
 }
+
+func SetGlobalDNS([]string) error {
+	return nil
+}
