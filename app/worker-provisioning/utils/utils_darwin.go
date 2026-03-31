@@ -10,6 +10,7 @@ import (
 )
 
 
+//TODO: Move this to /pkg
 func RunCommand(command Command) error {
 	cmd := exec.Command(command.Header, command.Commands...)
 

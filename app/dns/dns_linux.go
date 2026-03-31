@@ -1,13 +1,40 @@
 package dns
 
 import (
-	"net"
-  "github.com/godbus/dbus/v5"
 	"bytes"
-	"log"
-	"os/exec"
 	"fmt"
+	dns "hypha/app/dns/utils"
+	"log"
+	"net"
+	"os/exec"
+	"runtime"
+	"strings"
+
+	"github.com/godbus/dbus/v5"
 )
+
+func RunCommand(command dns.Command) error {
+	cmd := exec.Command(command.Header, command.Commands...)
+	
+	//buffers for debugging
+	var stdoutBuff bytes.Buffer
+	var stderrBuff bytes.Buffer
+
+	cmd.Stdout = &stdoutBuff
+	cmd.Stderr = &stderrBuff
+
+	err := cmd.Run()
+
+	if err != nil {
+		stderrString := stderrBuff.String()
+		log.Printf("error encountered when %s: %s",command.ID, stderrString)
+		return fmt.Errorf("error encountered when %s: %s ", command.ID, stderrString)
+	}
+
+	log.Printf("%s command successfully executed: %s", command.ID, stdoutBuff.String())
+	return nil
+}
+
 
 func GetGlobalDNS() ([]string, error) {
   
@@ -50,26 +77,55 @@ func GetGlobalDNS() ([]string, error) {
 //  - That should be it
 func SetGlobalDNS(servers []string) error {
 	
-	for _, server := range servers {
-			
-		cmd := exec.Command("networksetup", "-setdnsservers", "Wi-Fi", server)
-
-		//buffers for collecting output
-		var stdoutBuff bytes.Buffer
-		var stderrBuff bytes.Buffer
-
-		cmd.Stdout = &stdoutBuff
-		cmd.Stderr = &stderrBuff
-
+	commands := dns.CommandsLinux()	
 	
-		if err:= cmd.Run(); err != nil {
-			stderrString := stderrBuff.String()
-			log.Printf("Error setting DNS address %s", stderrString)
-			return fmt.Errorf("error setting DNS address %s", stderrString)
-		}
+	err := RunCommand(commands.CheckPackageManager)
+	
+	if err != nil {
+		return fmt.Errorf("Package manager chekc failed: %s", err)
+	}
+	
+	err = RunCommand(commands.CheckNetworkUtil)
+	if err != nil {
+		return fmt.Errorf("network util check failed: %s", err)
+	}
+
+
+	err = RunCommand(commands.StartNetworkUtil)
+
+	if err != nil {
+		return fmt.Errorf("start of network util failed: %s", err)
+	}
+	
+	//hacky af	
+	out, err := exec.Command(commands.RetrieveActiveConnection.Header, "-c", commands.RetrieveActiveConnection.Commands[0]).Output()
+
+	if err != nil {
+		return fmt.Errorf("spin-up failed: %s", err)
+	}
+	
+	//still hacky, we assume the first one to be the active dns
+	activeInterface := strings.Split(fmt.Sprintf("%s", out), "\n")[0]
+	
+	for _, server := range servers {
+		//fuck it
+		runtime.Breakpoint()
+		out, err = exec.Command("nmcli", "connection", "modify", activeInterface, "ipv4.dns", server).Output()
 		
-		log.Printf("successfully set DNS server %s", server)
+		if err != nil {
+			return fmt.Errorf("failed to modify DNS: %s", err)
+		}
+
+		out, err = exec.Command("nmcli", "connection", "up", activeInterface).Output()
+
+		if err != nil {
+			return fmt.Errorf("Failed to validate conn %s", err)
+		}
+
+
+		log.Printf("successfully set DNS server %s", out)
 	}
 	return nil
 }
+
 
