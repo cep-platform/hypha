@@ -5,7 +5,6 @@ import (
 	"hypha/app/worker-provisioning/utils"
 	"log"
 	"math"
-	"runtime"
 )
 
 func SpinUp(mem float64) error {
@@ -38,7 +37,6 @@ func SpinUp(mem float64) error {
 
 	log.Printf("All utilities correctly installed, reserving %v of memory now", memToReserve)	
 	
-	runtime.Breakpoint()	
 	err = provisoning.RunCommand(commands.BuildImage)
 	if err != nil {
 		return fmt.Errorf("spin-up failed: %s", err)
@@ -48,7 +46,6 @@ func SpinUp(mem float64) error {
 	
 	
 
-	runtime.Breakpoint()		
 	err = provisoning.RunCommand(commands.SpinUpContainer)
 	
 	if err != nil {
