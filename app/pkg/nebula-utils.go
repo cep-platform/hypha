@@ -21,6 +21,8 @@ import (
 //  - zip filepath needs to be given by user and validated 
 //  - we probably don't want all of this to be in pkg but service specific backend, this will be refactored after DNS is up
 //  - The UI is a mess but its fine for now as we don't have requirements yet
+//  - Platform dirs should be impl
+//  - Sudo outside installNebula()
 
 // this only supports linux for now, for v 2.0.0 we
 // would probably need to look at how fyne would work with cross-comp and save os-level operations
