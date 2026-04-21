@@ -2,7 +2,6 @@ package pkg
 
 import (
 	"archive/zip"
-	"bytes"
 	"fmt"
 	"io"
 	"log"
@@ -11,6 +10,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
+	"sync"
 )
 
 //TODO:Some things:
@@ -24,91 +24,55 @@ import (
 //  - Platform dirs should be impl
 //  - Sudo outside installNebula()
 
-// this only supports linux for now, for v 2.0.0 we
-// would probably need to look at how fyne would work with cross-comp and save os-level operations
-func InstallNebula() error {
-	cmd := exec.Command(
-		"sudo", "pacman", "install", "nebula",
-	)
-
-	//buffers for debugging
-	var stdoutBuff bytes.Buffer
-	var stderrBuff bytes.Buffer
-
-	cmd.Stdout = &stdoutBuff
-	cmd.Stderr = &stderrBuff
-
-	err := cmd.Run()
-
-	if err != nil {
-		stderrString := stderrBuff.String()
-		log.Printf("error encountered when installing nebula: %s", stderrString)
-		return fmt.Errorf("error encountered when installing nebula: %s ", stderrString)
-	}
-
-	log.Printf("Nebula successfully installed: %s", stdoutBuff.String())
-	return nil
-}
 
 func IfNebulaExists() bool {
-	cmd := exec.Command("nebula", "-version")
-
-	//buffers for debugging
-	var stdoutBuff bytes.Buffer
-	var stderrBuff bytes.Buffer
-
-	cmd.Stdout = &stdoutBuff
-	cmd.Stderr = &stderrBuff
-
-	err := cmd.Run()
-
+	_, err := os.Stat(NEBULA_PATH)
 	if err != nil {
-		stderrString := stderrBuff.String()
-		log.Printf("nebula not installed: %s", stderrString)
+		log.Printf("nebula binary not found at %s: %s", NEBULA_PATH, err)
 		return false
 	}
-
-	log.Printf("nebula successfully installed: %s", stdoutBuff.String())
+	log.Printf("nebula binary found at %s", NEBULA_PATH)
 	return true
 }
 
 func NebulaStart(nebulaPath string, certsPath string) (io.ReadCloser, error) {
-
 	cmd := exec.Command(
 		"sudo", nebulaPath, "-config", filepath.Join(certsPath, "config.yaml"),
 	)
 
-	stderrPipe, err := cmd.StderrPipe()
-
+	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
-		return stderrPipe, fmt.Errorf("failed to get stderr pipe: %w", err)
+		return nil, fmt.Errorf("failed to get stdout pipe: %w", err)
 	}
 
-	stdoutPipe, err := cmd.StdoutPipe()
-
+	stderrPipe, err := cmd.StderrPipe()
 	if err != nil {
-		return stderrPipe, fmt.Errorf("failed to get stdout pipe: %w", err)
+		return nil, fmt.Errorf("failed to get stderr pipe: %w", err)
 	}
 
 	if err := cmd.Start(); err != nil {
-		return stderrPipe, fmt.Errorf("failed to start nebula: %w", err)
+		return nil, fmt.Errorf("failed to start nebula: %w", err)
 	}
 
-	go func() {
-		stderrData, _ := io.Copy(os.Stderr, stderrPipe)
-		if stderrData > 0 {
-			log.Printf("nebula stderr: %v", stderrData)
-		}
-	}()
+	// Fan stdout and stderr into a single reader so the UI sees all output.
+	pr, pw := io.Pipe()
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	copy := func(src io.Reader) {
+		defer wg.Done()
+		io.Copy(pw, src) //nolint:errcheck
+	}
+
+	go copy(stdoutPipe)
+	go copy(stderrPipe)
 
 	go func() {
-		stdoutData, _ := io.Copy(os.Stdout, stdoutPipe)
-		if stdoutData > 0 {
-			log.Printf("nebula stdout: %v", stdoutData)
-		}
+		wg.Wait()
+		pw.Close()
 	}()
 
-	return stdoutPipe, nil
+	return pr, nil
 }
 
 func Unzip(src string, dest string) error {
