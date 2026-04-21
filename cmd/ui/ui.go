@@ -9,6 +9,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
@@ -87,47 +88,65 @@ func main() {
 				return
 			}
 
-			statusLabel.SetText("● Starting Nebula...")
-			appendLog("Starting Nebula service...")
+			passwordEntry := widget.NewPasswordEntry()
+			passwordEntry.SetPlaceHolder("sudo password")
 
-			go func() {
-				pipe, err := pkg.NebulaStart(pkg.NEBULA_PATH, pkg.DESTINATION_CERTS)
-				if err != nil {
-					fyne.Do(func() {
-						statusLabel.SetText("● Start failed")
-						appendLog(fmt.Sprintf("ERROR: %v", err))
-						log.Printf("Failed to start nebula: %v", err)
-					})
-					return
-				}
+			dialog.ShowCustomConfirm(
+				"Sudo Password Required",
+				"Start", "Cancel",
+				passwordEntry,
+				func(confirmed bool) {
+					if !confirmed {
+						return
+					}
 
-				fyne.Do(func() {
-					statusLabel.SetText("● Nebula running")
-					appendLog("✓ Nebula started successfully")
-					appendLog("--- Nebula Output ---")
-				})
+					password := passwordEntry.Text
+					passwordEntry.SetText("")
 
-				scanner := bufio.NewScanner(pipe)
-				for scanner.Scan() {
-					line := scanner.Text()
-					fyne.Do(func() {
-						logText += line + "\n"
-						logLabel.SetText(logText)
-						logScroll.ScrollToBottom()
-					})
-				}
+					statusLabel.SetText("● Starting Nebula...")
+					appendLog("Starting Nebula service...")
 
-				if err := scanner.Err(); err != nil {
-					fyne.Do(func() {
-						appendLog(fmt.Sprintf("ERROR reading nebula output: %v", err))
-					})
-				}
+					go func() {
+						pipe, err := pkg.NebulaStart(pkg.NEBULA_PATH, pkg.DESTINATION_CERTS, password)
+						if err != nil {
+							fyne.Do(func() {
+								statusLabel.SetText("● Start failed")
+								appendLog(fmt.Sprintf("ERROR: %v", err))
+								log.Printf("Failed to start nebula: %v", err)
+							})
+							return
+						}
 
-				fyne.Do(func() {
-					statusLabel.SetText("● Nebula stopped")
-					appendLog("--- Nebula exited ---")
-				})
-			}()
+						fyne.Do(func() {
+							statusLabel.SetText("● Nebula running")
+							appendLog("✓ Nebula started successfully")
+							appendLog("--- Nebula Output ---")
+						})
+
+						scanner := bufio.NewScanner(pipe)
+						for scanner.Scan() {
+							line := scanner.Text()
+							fyne.Do(func() {
+								logText += line + "\n"
+								logLabel.SetText(logText)
+								logScroll.ScrollToBottom()
+							})
+						}
+
+						if err := scanner.Err(); err != nil {
+							fyne.Do(func() {
+								appendLog(fmt.Sprintf("ERROR reading nebula output: %v", err))
+							})
+						}
+
+						fyne.Do(func() {
+							statusLabel.SetText("● Nebula stopped")
+							appendLog("--- Nebula exited ---")
+						})
+					}()
+				},
+				w,
+			)
 		})
 
 	// Button container
