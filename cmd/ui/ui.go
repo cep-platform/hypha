@@ -1,14 +1,15 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"hypha/app/pkg"
-	"io"
 	"log"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
@@ -41,6 +42,26 @@ func main() {
 	}
 
 
+	installBtn := widget.NewButtonWithIcon("Install Nebula",
+		theme.DownloadIcon(), func() {
+			statusLabel.SetText("● Installing Nebula...")
+			appendLog(fmt.Sprintf("Downloading nebula v%s...", pkg.NEBULA_VERSION))
+
+			go func() {
+				err := pkg.InstallNebula()
+				fyne.Do(func() {
+					if err != nil {
+						statusLabel.SetText("● Install failed")
+						appendLog(fmt.Sprintf("ERROR: %v", err))
+						log.Printf("Failed to install nebula: %v", err)
+						return
+					}
+					statusLabel.SetText("● Nebula installed")
+					appendLog(fmt.Sprintf("✓ Nebula v%s installed successfully", pkg.NEBULA_VERSION))
+				})
+			}()
+		})
+
 	unzipBtn := widget.NewButtonWithIcon("Unzip Certificates",
 		theme.FolderOpenIcon(), func() {
 			statusLabel.SetText("● Unzipping...")
@@ -61,57 +82,76 @@ func main() {
 	//TODO: block starting nebula before unzipping
 	startBtn := widget.NewButtonWithIcon("Start Nebula",
 		theme.MediaPlayIcon(), func() {
-			statusLabel.SetText("● Starting Nebula...")
-			appendLog("Starting Nebula service...")
-
-			pipe, err := pkg.NebulaStart(pkg.NEBULA_PATH, pkg.DESTINATION_CERTS)
-			if err != nil {
-				statusLabel.SetText("● Start failed")
-				appendLog(fmt.Sprintf("ERROR: %v", err))
-				log.Printf("Failed to start nebula: %v", err)
+			if !pkg.IfNebulaExists() {
+				statusLabel.SetText("● Not installed")
+				appendLog("ERROR: Nebula is not installed. Please install it first.")
 				return
 			}
 
-			statusLabel.SetText("● Nebula running")
-			appendLog("✓ Nebula started successfully")
-			appendLog("--- Nebula Output ---")
+			passwordEntry := widget.NewPasswordEntry()
+			passwordEntry.SetPlaceHolder("sudo password")
 
-			linesChan := make(chan string, 100)
-
-			go func() {
-				defer close(linesChan)
-				buf := make([]byte, 1024)
-				for {
-					n, err := pipe.Read(buf)
-					if n > 0 {
-						line := string(buf[:n])
-						fmt.Println("RAW READ:", line) // Debug
-						linesChan <- line
+			dialog.ShowCustomConfirm(
+				"Sudo Password Required",
+				"Start", "Cancel",
+				passwordEntry,
+				func(confirmed bool) {
+					if !confirmed {
+						return
 					}
-					if err != nil {
-						if err != io.EOF {
-							linesChan <- fmt.Sprintf("ERROR: %v", err)
+
+					password := passwordEntry.Text
+					passwordEntry.SetText("")
+
+					statusLabel.SetText("● Starting Nebula...")
+					appendLog("Starting Nebula service...")
+
+					go func() {
+						pipe, err := pkg.NebulaStart(pkg.NEBULA_PATH, pkg.DESTINATION_CERTS, password)
+						if err != nil {
+							fyne.Do(func() {
+								statusLabel.SetText("● Start failed")
+								appendLog(fmt.Sprintf("ERROR: %v", err))
+								log.Printf("Failed to start nebula: %v", err)
+							})
+							return
 						}
-						break
-					}
-				}
-			}()
 
-			// Update UI from channel
-			go func() {
-				for line := range linesChan {
-					currentLine := line
-					fyne.Do(func() {
-						logText += currentLine + "\n"
-						logLabel.SetText(logText)
-						logScroll.ScrollToBottom()
-					})
-				}
-			}()
+						fyne.Do(func() {
+							statusLabel.SetText("● Nebula running")
+							appendLog("✓ Nebula started successfully")
+							appendLog("--- Nebula Output ---")
+						})
+
+						scanner := bufio.NewScanner(pipe)
+						for scanner.Scan() {
+							line := scanner.Text()
+							fyne.Do(func() {
+								logText += line + "\n"
+								logLabel.SetText(logText)
+								logScroll.ScrollToBottom()
+							})
+						}
+
+						if err := scanner.Err(); err != nil {
+							fyne.Do(func() {
+								appendLog(fmt.Sprintf("ERROR reading nebula output: %v", err))
+							})
+						}
+
+						fyne.Do(func() {
+							statusLabel.SetText("● Nebula stopped")
+							appendLog("--- Nebula exited ---")
+						})
+					}()
+				},
+				w,
+			)
 		})
 
 	// Button container
-	buttonBox := container.NewGridWithColumns(2,
+	buttonBox := container.NewGridWithColumns(3,
+		installBtn,
 		unzipBtn,
 		startBtn,
 	)
