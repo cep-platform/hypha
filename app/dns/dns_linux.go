@@ -8,7 +8,6 @@ import (
 	"net"
 	"os/exec"
 	"strings"
-	"runtime"
 	"github.com/godbus/dbus/v5"
 )
 
@@ -95,7 +94,6 @@ func SetGlobalDNS(servers []string) error {
 	}
 
 	dnsArg := strings.Join(servers, " ")
-	runtime.Breakpoint()
 	modifyCmd := exec.Command("nmcli", "connection", "modify", activeInterface, "ipv4.dns", dnsArg)
 	if err := modifyCmd.Run(); err != nil {
 		return fmt.Errorf("failed to modify DNS: %s", err)
