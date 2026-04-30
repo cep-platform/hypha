@@ -19,7 +19,7 @@ var (
 	HOME_DIR, "/.cache",
 	)
 	HOST_NAME = "nebula"	
-	HOST_PATH = filepath.Join(ZIPPED_CERT_PATH, HOST_NAME + ".zip")
+	HOST_PATH = filepath.Join(ZIPPED_CERT_PATH, HOST_NAME + ".cepbundle")
 
 
 	DESTINATION_CERTS = filepath.Join(

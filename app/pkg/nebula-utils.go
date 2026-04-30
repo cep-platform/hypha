@@ -38,7 +38,7 @@ func IfNebulaExists() bool {
 func NebulaStart(nebulaPath string, certsPath string, password string) (io.ReadCloser, error) {
 	// -S tells sudo to read the password from stdin instead of a terminal
 	cmd := exec.Command(
-		"sudo", "-S", nebulaPath, "-config", filepath.Join(certsPath, "config.yaml"),
+		"sudo", nebulaPath, "-config", filepath.Join(certsPath, "config.yml"),
 	)
 	cmd.Stdin = strings.NewReader(password + "\n")
 

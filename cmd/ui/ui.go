@@ -10,6 +10,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
@@ -64,19 +65,37 @@ func main() {
 
 	unzipBtn := widget.NewButtonWithIcon("Unzip Certificates",
 		theme.FolderOpenIcon(), func() {
-			statusLabel.SetText("● Unzipping...")
-			appendLog("Starting certificate extraction...")
+			fd := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
+				if err != nil {
+					statusLabel.SetText("● Error")
+					appendLog(fmt.Sprintf("ERROR: %v", err))
+					return
+				}
+				if reader == nil {
+					return
+				}
+				defer reader.Close()
 
-			err := pkg.Unzip(pkg.HOST_PATH, pkg.DESTINATION_FOLDER)
-			if err != nil {
-				statusLabel.SetText("● Unzip failed")
-				appendLog(fmt.Sprintf("ERROR: %v", err))
-				log.Printf("Unzip error: %v", err)
-				return
-			}
+				zipPath := reader.URI().Path()
+				statusLabel.SetText("● Unzipping...")
+				appendLog(fmt.Sprintf("Extracting: %s", zipPath))
 
-			statusLabel.SetText("● Unzip complete")
-			appendLog("✓ Certificates extracted successfully")
+				go func() {
+					err := pkg.Unzip(zipPath, pkg.DESTINATION_FOLDER)
+					fyne.Do(func() {
+						if err != nil {
+							statusLabel.SetText("● Unzip failed")
+							appendLog(fmt.Sprintf("ERROR: %v", err))
+							log.Printf("Unzip error: %v", err)
+							return
+						}
+						statusLabel.SetText("● Unzip complete")
+						appendLog("✓ Certificates extracted successfully")
+					})
+				}()
+			}, w)
+			fd.SetFilter(storage.NewExtensionFileFilter([]string{".cepbundle", ".zip"}))
+			fd.Show()
 		})
 
 	//TODO: block starting nebula before unzipping
