@@ -37,7 +37,7 @@ func IfNebulaExists() bool {
 
 func NebulaStart(nebulaPath string, certsPath string) (io.ReadCloser, error) {
 	cmd := exec.Command(
-		"sudo", nebulaPath, "-config", filepath.Join(certsPath, "config.yaml"),
+		"sudo", nebulaPath, "-config", filepath.Join(certsPath, "config.yml"),
 	)
 
 	stdoutPipe, err := cmd.StdoutPipe()
