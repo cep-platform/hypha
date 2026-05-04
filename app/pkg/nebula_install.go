@@ -23,7 +23,6 @@ const nebulaReleaseBaseURL = "https://github.com/slackhq/nebula/releases/downloa
 func buildDownloadURL(version string) (url string, isTarGz bool, err error) {
 	goos := runtime.GOOS
 	goarch := runtime.GOARCH
-
 	var filename string
 	switch goos {
 	case "linux":
@@ -36,7 +35,6 @@ func buildDownloadURL(version string) (url string, isTarGz bool, err error) {
 	default:
 		return "", false, fmt.Errorf("unsupported OS: %s", goos)
 	}
-
 	url = fmt.Sprintf("%s/v%s/%s", nebulaReleaseBaseURL, version, filename)
 	return url, isTarGz, nil
 }
@@ -62,7 +60,6 @@ func InstallNebula() error {
 	if err := os.MkdirAll(destDir, DEFAULT_PERMISSIONS); err != nil {
 		return fmt.Errorf("failed to create destination directory: %w", err)
 	}
-
 	if isTarGz {
 		if err := Untar(tmpFile, destDir); err != nil {
 			return fmt.Errorf("extraction failed: %w", err)

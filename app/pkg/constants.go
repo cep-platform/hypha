@@ -35,6 +35,6 @@ var (
 const (
 	DEFAULT_PERMISSIONS = 0755
 	OWNER_READ_WRITE    = 0644
-	NEBULA_VERSION      = "1.9.5"
+	NEBULA_VERSION      = "1.10.0"
 )
 

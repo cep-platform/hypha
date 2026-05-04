@@ -18,7 +18,6 @@ import (
 //	    - wrap below in receiver funcs
 //	    - tidy the constants
 //	- better error handling for when exec commands fail
-//  - zip filepath needs to be given by user and validated 
 //  - we probably don't want all of this to be in pkg but service specific backend, this will be refactored after DNS is up
 //  - The UI is a mess but its fine for now as we don't have requirements yet
 //  - Platform dirs should be impl
@@ -35,10 +34,15 @@ func IfNebulaExists() bool {
 	return true
 }
 
-func NebulaStart(nebulaPath string, certsPath string) (io.ReadCloser, error) {
+func NebulaStart(nebulaPath string, certsPath string, sudoPassword string) (io.ReadCloser, error) {
 	cmd := exec.Command(
-		"sudo", nebulaPath, "-config", filepath.Join(certsPath, "config.yml"),
+		"sudo", "-S", nebulaPath, "-config", filepath.Join(certsPath, "config.yml"),
 	)
+
+	stdinPipe, err := cmd.StdinPipe()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get stdin pipe: %w", err)
+	}
 
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
@@ -53,6 +57,11 @@ func NebulaStart(nebulaPath string, certsPath string) (io.ReadCloser, error) {
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("failed to start nebula: %w", err)
 	}
+
+	go func() {
+		defer stdinPipe.Close()
+		fmt.Fprintln(stdinPipe, sudoPassword)
+	}()
 
 	// Fan stdout and stderr into a single reader so the UI sees all output.
 	pr, pw := io.Pipe()
@@ -109,7 +118,8 @@ func Unzip(src string, dest string) error {
 			os.MkdirAll(path, DEFAULT_PERMISSIONS)
 		} else {
 			os.MkdirAll(filepath.Dir(path), DEFAULT_PERMISSIONS)
-			f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, OWNER_READ_WRITE)
+			mode := f.Mode()
+			f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, mode)
 			if err != nil {
 				return err
 			}
