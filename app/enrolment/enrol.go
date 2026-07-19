@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bufio"
+	"fmt"
 	"hypha/app/pkg"
 	"io"
 	"log"
 	"os"
+	"strings"
 )
 
 //NOTE: This is mainly used for development currently
@@ -37,7 +40,14 @@ func Enrol() io.ReadCloser {
 		os.Exit(1)
 	}
 	
-	 pipe, err := pkg.NebulaStart(pkg.NEBULA_PATH, pkg.DESTINATION_CERTS)
+	fmt.Print("Enter sudo password: ")
+	passwordBytes, err := bufio.NewReader(os.Stdin).ReadString('\n')
+	if err != nil {
+		log.Fatal("Failed to read password: ", err)
+	}
+	sudoPassword := strings.TrimRight(passwordBytes, "\r\n")
+
+	pipe, err := pkg.NebulaStart(pkg.NEBULA_PATH, pkg.DESTINATION_CERTS, sudoPassword)
 	
 	if err != nil {
 		log.Fatal("Failed to start Nebula: %w", err)

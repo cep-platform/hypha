@@ -90,6 +90,7 @@ func main() {
 							return
 						}
 						statusLabel.SetText("● Unzip complete")
+						appendLog(fmt.Sprintf("Destination path: %s", pkg.DESTINATION_FOLDER))
 						appendLog("✓ Certificates extracted successfully")
 					})
 				}()
@@ -110,6 +111,13 @@ func main() {
 			passwordEntry := widget.NewPasswordEntry()
 			passwordEntry.SetPlaceHolder("sudo password")
 
+			dialog.NewCustomConfirm(
+				"Sudo Password Required",
+				"Start", "Cancel",
+				container.NewVBox(
+					widget.NewLabel("Enter your sudo password to start Nebula:"),
+					passwordEntry,
+				),
 			dialog.ShowCustomConfirm(
 				"Sudo Password Required",
 				"Start", "Cancel",
@@ -119,14 +127,13 @@ func main() {
 						return
 					}
 
-					password := passwordEntry.Text
-					passwordEntry.SetText("")
-
 					statusLabel.SetText("● Starting Nebula...")
 					appendLog("Starting Nebula service...")
 
+					sudoPassword := passwordEntry.Text
+
 					go func() {
-						pipe, err := pkg.NebulaStart(pkg.NEBULA_PATH, pkg.DESTINATION_CERTS, password)
+						pipe, err := pkg.NebulaStart(pkg.NEBULA_PATH, pkg.DESTINATION_CERTS, sudoPassword)
 						if err != nil {
 							fyne.Do(func() {
 								statusLabel.SetText("● Start failed")
@@ -163,9 +170,8 @@ func main() {
 							appendLog("--- Nebula exited ---")
 						})
 					}()
-				},
-				w,
-			)
+				}, w,
+			).Show()
 		})
 
 	// Button container
