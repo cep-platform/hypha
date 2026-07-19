@@ -79,10 +79,8 @@ func ParsePostNames20(src []byte) (PostNames20, int, error) {
 	}
 	{
 
-		err := item.parseStrings(src[n:])
-		if err != nil {
-			return item, 0, fmt.Errorf("reading PostNames20: %s", err)
-		}
+		item.StringData = src[n:]
+		n = len(src)
 	}
 	return item, n, nil
 }

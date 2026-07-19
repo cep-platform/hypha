@@ -5,10 +5,6 @@ import (
 	"github.com/go-text/typesetting/harfbuzz"
 )
 
-// adjust the cache size of the zero value, used by default
-// in [HarfbuzzShaper]
-const defaultFontCacheSize = 32
-
 // fontEntry holds a single key-value pair for an LRU cache.
 type fontEntry struct {
 	next, prev *fontEntry
@@ -25,9 +21,7 @@ type fontLRU struct {
 	// https://git.sr.ht/~eliasnaur/gio/tree/e768fe347a732056031100f2c66987d6db258ea4/item/text/lru.go
 	m          map[*font.Font]*fontEntry
 	head, tail *fontEntry
-
-	// the actual cache size is [maxSizeOffset] + [defaultFontCacheSize]
-	maxSizeOffset int
+	maxSize    int
 }
 
 // Get fetches the value associated with the given key, if any.
@@ -53,7 +47,7 @@ func (l *fontLRU) Put(k *font.Font, v *harfbuzz.Font) {
 	val := &fontEntry{key: k, v: v}
 	l.m[k] = val
 	l.insert(val)
-	if len(l.m) > (defaultFontCacheSize + l.maxSizeOffset) {
+	if len(l.m) > l.maxSize {
 		oldest := l.tail.next
 		l.remove(oldest)
 		delete(l.m, oldest.key)

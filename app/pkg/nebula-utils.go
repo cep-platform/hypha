@@ -11,8 +11,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-
-	yaml "github.com/goccy/go-yaml"
 )
 
 //TODO:Some things:
@@ -20,117 +18,12 @@ import (
 //	    - wrap below in receiver funcs
 //	    - tidy the constants
 //	- better error handling for when exec commands fail
+//  - zip filepath needs to be given by user and validated 
 //  - we probably don't want all of this to be in pkg but service specific backend, this will be refactored after DNS is up
 //  - The UI is a mess but its fine for now as we don't have requirements yet
 //  - Platform dirs should be impl
 //  - Sudo outside installNebula()
 
-type NebulaConfig struct {
-	Firewall struct {
-		Conntrack struct {
-			DefaultTimeout string `yaml:"default_timeout"`
-			TcpTimeout string `yaml:"tcp_timeout"`
-			UdpTimeout string `yaml:"udp_timeout"`
-		} `yaml:"conntrack"`
-		Inbound []struct {
-			Host string `yaml:"host"`
-			Port string `yaml:"port"`
-			Proto string `yaml:"proto"`
-		} `yaml:"inbound"`
-		InboundAction string `yaml:"inbound_action"`
-		Outbound []struct {
-			Host string `yaml:"host"`
-			Port string `yaml:"port"`
-			Proto string `yaml:"proto"`
-		} `yaml:"outbound"`
-		OutboundAction string `yaml:"outbound_action"`
-	} `yaml:"firewall"`
-	Lighthouse struct {
-		AmLighthouse bool `yaml:"am_lighthouse"`
-		Hosts []string `yaml:"hosts"`
-		Interval int `yaml:"interval"`
-	} `yaml:"lighthouse"`
-	Listen struct {
-		Host string `yaml:"host"`
-		Port int `yaml:"port"`
-	} `yaml:"listen"`
-	Logging struct {
-		Format string `yaml:"format"`
-		Level string `yaml:"level"`
-	} `yaml:"logging"`
-	Pki struct {
-		CaPath string `yaml:"ca"`
-		CertPath string `yaml:"cert"`
-		KeyPath string `yaml:"key"`
-	} `yaml:"pki"`
-	Punchy struct {
-		Punch bool `yaml:"punch"`
-	} `yaml:"punchy"`
-	Relay struct {
-		AmRelay bool `yaml:"am_relay"`
-		UseRelays bool `yaml:"use_relays"`
-	} `yaml:"relay"`
-	StaticHostMap interface{} `yaml:"static_host_map"`
-	Tun struct {
-		Dev string `yaml:"dev"`
-		Disabled bool `yaml:"disabled"`
-		DropLocalBroadcast bool `yaml:"drop_local_broadcast"`
-		DropMulticast bool `yaml:"drop_multicast"`
-		Mtu int `yaml:"mtu"`
-		Routes interface{} `yaml:"routes"`
-		TxQueue int `yaml:"tx_queue"`
-		UnsafeRoutes interface{} `yaml:"unsafe_routes"`
-	} `yaml:"tun"`
-}
-
-func (nc *NebulaConfig) trimPath() {
-	
-	nc.Pki.CaPath = nc.Pki.CaPath[strings.LastIndex(nc.Pki.CaPath, "/") +1:]
-	nc.Pki.CertPath = nc.Pki.CertPath[strings.LastIndex(nc.Pki.CertPath, "/") +1:]
-	nc.Pki.KeyPath = nc.Pki.KeyPath[strings.LastIndex(nc.Pki.KeyPath, "/") +1:]
-}
-
-func (nc *NebulaConfig) prependHomePath() {
-	nc.Pki.CaPath = filepath.Join(DESTINATION_CERTS, nc.Pki.CaPath)
-	nc.Pki.CertPath = filepath.Join(DESTINATION_CERTS, nc.Pki.CertPath)
-	nc.Pki.KeyPath = filepath.Join(DESTINATION_CERTS, nc.Pki.KeyPath)
-}
-
-
-
-//TODO: Add a verifier to check if path has already been fixed
-//ALSO, instead of mutilating the bundle from cep server, we can just modify here until the alst slash
-func InjectNebulaPath(path string) error {
-	var yamlPayload NebulaConfig
-	file, err := os.ReadFile(path)
-	if err != nil {
-		return fmt.Errorf("Failed to open file %s", err)
-	}
-	
-	err = yaml.Unmarshal(file, &yamlPayload)
-	
-	yamlPayload.trimPath()
-	yamlPayload.prependHomePath()
-	
-	if err != nil {
-		return fmt.Errorf("Failed to extract yaml from file %s", err)
-	}
-	
-	injectedPath, err := yaml.Marshal(yamlPayload)
-
-	if err != nil {
-		return fmt.Errorf("Failed to marshal back: %s", err)
-	}
-
-	
-	err = os.WriteFile(path,  injectedPath, OWNER_READ_WRITE)
-
-	if err != nil {
-		return fmt.Errorf("Failed to write back yaml %s", err)
-	}
-	return nil
-
-}
 
 func IfNebulaExists() bool {
 	_, err := os.Stat(NEBULA_PATH)
@@ -142,25 +35,11 @@ func IfNebulaExists() bool {
 	return true
 }
 
-func NebulaStart(nebulaPath string, certsPath string, sudoPassword string) (io.ReadCloser, error) {
-	
-	err := InjectNebulaPath(HOST_CONFIG)
-
-	if err != nil {
-
-		return nil, fmt.Errorf("failed to modify nebula config: %w", err)
-	}
-
-
+func NebulaStart(nebulaPath string, certsPath string, password string) (io.ReadCloser, error) {
+	// -S tells sudo to read the password from stdin instead of a terminal
 	cmd := exec.Command(
-		"sudo", "-S", nebulaPath, "-config", filepath.Join(certsPath, "config.yml"),
+		"sudo", nebulaPath, "-config", filepath.Join(certsPath, "config.yml"),
 	)
-	cmd.Dir = certsPath
-
-	stdinPipe, err := cmd.StdinPipe()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get stdin pipe: %w", err)
-	}
 	cmd.Stdin = strings.NewReader(password + "\n")
 
 	stdoutPipe, err := cmd.StdoutPipe()
@@ -176,11 +55,6 @@ func NebulaStart(nebulaPath string, certsPath string, sudoPassword string) (io.R
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("failed to start nebula: %w", err)
 	}
-
-	go func() {
-		defer stdinPipe.Close()
-		fmt.Fprintln(stdinPipe, sudoPassword)
-	}()
 
 	// Fan stdout and stderr into a single reader so the UI sees all output.
 	pr, pw := io.Pipe()
@@ -237,8 +111,7 @@ func Unzip(src string, dest string) error {
 			os.MkdirAll(path, DEFAULT_PERMISSIONS)
 		} else {
 			os.MkdirAll(filepath.Dir(path), DEFAULT_PERMISSIONS)
-			mode := f.Mode()
-			f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, mode)
+			f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, OWNER_READ_WRITE)
 			if err != nil {
 				return err
 			}
