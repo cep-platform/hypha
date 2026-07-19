@@ -90,6 +90,7 @@ func main() {
 							return
 						}
 						statusLabel.SetText("● Unzip complete")
+						appendLog(fmt.Sprintf("Destination path: %s", pkg.DESTINATION_FOLDER))
 						appendLog("✓ Certificates extracted successfully")
 					})
 				}()

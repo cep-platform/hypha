@@ -1,7 +1,7 @@
 package pkg
 
 import (
-	"path/filepath"	
+	"path/filepath"
 )
 var (
 	HOME_DIR = GetHomeDir()
@@ -26,6 +26,10 @@ var (
 		DESTINATION_FOLDER, HOST_NAME,
 		)
 	
+	HOST_CONFIG = filepath.Join(
+		DESTINATION_CERTS, "/config.yml",
+	)
+
 	DIRS = []string{
 		ZIPPED_CERT_PATH,
 		DESTINATION_FOLDER,

@@ -4,9 +4,9 @@ go 1.25.5
 
 require (
 	fyne.io/fyne/v2 v2.7.3
+	github.com/goccy/go-yaml v1.19.2
 	github.com/godbus/dbus/v5 v5.1.0
 	github.com/shirou/gopsutil/v3 v3.24.5
-	golang.org/x/sys v0.41.0
 )
 
 require (
@@ -44,6 +44,7 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	golang.org/x/image v0.24.0 // indirect
 	golang.org/x/net v0.48.0 // indirect
+	golang.org/x/sys v0.41.0 // indirect
 	golang.org/x/text v0.32.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
