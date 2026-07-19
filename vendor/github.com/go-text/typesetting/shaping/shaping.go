@@ -24,7 +24,7 @@ type HarfbuzzShaper struct {
 // It is safe to adjust the size after using the shaper, though shrinking
 // it may result in many evictions on the next shaping.
 func (h *HarfbuzzShaper) SetFontCacheSize(size int) {
-	h.fonts.maxSizeOffset = size - defaultFontCacheSize
+	h.fonts.maxSize = size
 }
 
 var _ Shaper = (*HarfbuzzShaper)(nil)
@@ -113,7 +113,6 @@ func (t *HarfbuzzShaper) Shape(input Input) Output {
 	t.buf.Shape(font, t.features)
 
 	// Convert the shaped text into an Output.
-	isVertical := input.Direction.IsVertical()
 	glyphs := make([]Glyph, len(t.buf.Info))
 	for i := range glyphs {
 		g := t.buf.Info[i].Glyph
@@ -132,13 +131,8 @@ func (t *HarfbuzzShaper) Shape(input Input) Output {
 		glyphs[i].Height = fixed.I(int(extents.Height)) >> scaleShift
 		glyphs[i].XBearing = fixed.I(int(extents.XBearing)) >> scaleShift
 		glyphs[i].YBearing = fixed.I(int(extents.YBearing)) >> scaleShift
-		if isVertical {
-			glyphs[i].YAdvance = fixed.I(int(t.buf.Pos[i].YAdvance)) >> scaleShift
-			glyphs[i].Advance = glyphs[i].YAdvance
-		} else {
-			glyphs[i].XAdvance = fixed.I(int(t.buf.Pos[i].XAdvance)) >> scaleShift
-			glyphs[i].Advance = glyphs[i].XAdvance
-		}
+		glyphs[i].XAdvance = fixed.I(int(t.buf.Pos[i].XAdvance)) >> scaleShift
+		glyphs[i].YAdvance = fixed.I(int(t.buf.Pos[i].YAdvance)) >> scaleShift
 		glyphs[i].XOffset = fixed.I(int(t.buf.Pos[i].XOffset)) >> scaleShift
 		glyphs[i].YOffset = fixed.I(int(t.buf.Pos[i].YOffset)) >> scaleShift
 	}

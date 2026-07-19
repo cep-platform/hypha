@@ -15,9 +15,3 @@ type EBLC = CBLC
 // Bloc is the bitmap location table
 // See - https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6bloc.html
 type Bloc = CBLC
-
-// PaintColrLayersResolved is a simili PaintTable, build
-// from COLR version 0 table.
-type PaintColrLayersResolved []Layer
-
-func (PaintColrLayersResolved) isPaintTable() {}

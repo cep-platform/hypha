@@ -1,7 +1,7 @@
 package pkg
 
 import (
-	"path/filepath"
+	"path/filepath"	
 )
 var (
 	HOME_DIR = GetHomeDir()
@@ -26,10 +26,6 @@ var (
 		DESTINATION_FOLDER, HOST_NAME,
 		)
 	
-	HOST_CONFIG = filepath.Join(
-		DESTINATION_CERTS, "/config.yml",
-	)
-
 	DIRS = []string{
 		ZIPPED_CERT_PATH,
 		DESTINATION_FOLDER,
@@ -39,6 +35,6 @@ var (
 const (
 	DEFAULT_PERMISSIONS = 0755
 	OWNER_READ_WRITE    = 0644
-	NEBULA_VERSION      = "1.10.0"
+	NEBULA_VERSION      = "1.9.5"
 )
 

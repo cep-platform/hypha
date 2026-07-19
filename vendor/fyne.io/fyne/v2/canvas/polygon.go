@@ -55,6 +55,9 @@ func (r *Polygon) Resize(s fyne.Size) {
 	}
 
 	r.baseObject.Resize(s)
+	if r.StrokeWidth == 0 {
+		return
+	}
 
 	Refresh(r)
 }

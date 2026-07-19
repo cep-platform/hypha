@@ -129,10 +129,9 @@ func (a *Accordion) RemoveIndex(index int) {
 
 type accordionRenderer struct {
 	widget.BaseRenderer
-	container    *Accordion
-	headers      []*Button
-	dividers     []fyne.CanvasObject
-	minSizeCache fyne.Size
+	container *Accordion
+	headers   []*Button
+	dividers  []fyne.CanvasObject
 }
 
 func (r *accordionRenderer) Layout(size fyne.Size) {
@@ -195,10 +194,6 @@ func (r *accordionRenderer) Layout(size fyne.Size) {
 }
 
 func (r *accordionRenderer) MinSize() fyne.Size {
-	if !r.minSizeCache.IsZero() {
-		return r.minSizeCache
-	}
-
 	r.updateObjects()
 	th := r.container.Theme()
 	pad := th.Size(theme.SizeNamePadding)
@@ -219,12 +214,10 @@ func (r *accordionRenderer) MinSize() fyne.Size {
 		}
 	}
 
-	r.minSizeCache = size
 	return size
 }
 
 func (r *accordionRenderer) Refresh() {
-	r.minSizeCache = fyne.Size{}
 	r.updateObjects()
 	r.Layout(r.container.Size())
 	canvas.Refresh(r.container)

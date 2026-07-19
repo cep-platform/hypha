@@ -1,8 +1,6 @@
 package fontscan
 
 import (
-	"errors"
-	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -29,11 +27,7 @@ func (dst *footprintScanner) scanDirectory(logger Logger, dir string, visited ma
 		// load the information, following potential symoblic links
 		info, err := os.Stat(path)
 		if err != nil {
-			if errors.Is(err, os.ErrNotExist) {
-				logger.Printf("skipping dead link or missing file: %q", path)
-				return nil
-			}
-			return fmt.Errorf("failed to stat %q: %w", path, err)
+			return err
 		}
 
 		// always ignore files which should never be font files
