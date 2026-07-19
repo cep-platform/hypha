@@ -151,6 +151,7 @@ func NebulaStart(nebulaPath string, certsPath string, sudoPassword string) (io.R
 		return nil, fmt.Errorf("failed to modify nebula config: %w", err)
 	}
 
+
 	cmd := exec.Command(
 		"sudo", "-S", nebulaPath, "-config", filepath.Join(certsPath, "config.yml"),
 	)
@@ -160,6 +161,7 @@ func NebulaStart(nebulaPath string, certsPath string, sudoPassword string) (io.R
 	if err != nil {
 		return nil, fmt.Errorf("failed to get stdin pipe: %w", err)
 	}
+	cmd.Stdin = strings.NewReader(password + "\n")
 
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {

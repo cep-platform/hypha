@@ -33,15 +33,23 @@ func getActiveInterface() (string, error) {
 	}
 
 	lines := strings.Split(string(out), "\n")
-	for _, line := range lines {
+	for device_idx, line := range lines {
 		if strings.HasPrefix(line, "Device:") {
 			device := strings.TrimSpace(strings.TrimPrefix(line, "Device:"))
-			out, err := exec.Command("ifconfig", device).Output()
+			out, err := exec.Command("ipconfig", "getifaddr", device).Output()
+			
 			if err != nil {
 				continue
 			}
-			if strings.Contains(string(out), "inet ") && !strings.Contains(string(out), "inet6 ") {
-				return device, nil
+
+			if len(string(out)) > 0 {
+				deviceType := lines[device_idx - 1] //retrieve the line before as it is always stored like that
+				deviceType = strings.TrimSpace(
+					strings.Split(
+						deviceType, ": ")[1],
+					)  //will always be on the first index
+
+				return deviceType, nil
 			}
 		}
 	}

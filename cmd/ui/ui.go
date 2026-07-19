@@ -118,6 +118,10 @@ func main() {
 					widget.NewLabel("Enter your sudo password to start Nebula:"),
 					passwordEntry,
 				),
+			dialog.ShowCustomConfirm(
+				"Sudo Password Required",
+				"Start", "Cancel",
+				passwordEntry,
 				func(confirmed bool) {
 					if !confirmed {
 						return
